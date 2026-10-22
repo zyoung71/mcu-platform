@@ -1,7 +1,6 @@
 #include "platform/adc.h"
 #include "hardware/adc.h"
 
-#include <hardware/platform_defs.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -14,16 +13,8 @@ typedef struct
 
 } rp_adc_handle_t;
 
-static rp_adc_handle_t handles[NUM_ADC_CHANNELS];
-static bool adc_initialized;
-
-__attribute__((constructor)) static void init_handles()
-{
-    for (size_t i = 0; i < NUM_ADC_CHANNELS; i++)
-    {
-        memset(&handles[i], 0, sizeof(rp_adc_handle_t));
-    }
-}
+static rp_adc_handle_t handles[NUM_ADC_CHANNELS] = {0};
+static bool adc_initialized = false;
 
 static rp_adc_handle_t* find_handle(mcu_adc_t adc)
 {
@@ -75,18 +66,15 @@ void mcu_adc_init(mcu_adc_t adc, const mcu_adc_config_t* cfg)
     slot->active = true;
 }
 
-void mcu_adc_read(mcu_adc_t adc, uint16_t* value)
+uint32_t mcu_adc_read(mcu_adc_t adc)
 {
-    if (!value)
-        return;
-
-    rp_adc_handle_t *handle = find_handle(adc);
+    rp_adc_handle_t* handle = find_handle(adc);
 
     if (!handle)
-        return;
+        return 0;
 
     adc_select_input(handle->channel);
-    *value = adc_read();
+    return (uint32_t)adc_read();
 }
 
 uint16_t mcu_adc_get_max_value(mcu_adc_t adc)
@@ -105,9 +93,4 @@ void mcu_adc_deinit(mcu_adc_t adc)
         return;
 
     memset(handle, 0, sizeof(*handle));
-
-    /*
-     * Do not call adc_deinit() here: another registered
-     * channel may still be using the shared peripheral.
-     */
 }

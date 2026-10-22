@@ -1,5 +1,5 @@
-#include <hardware/platform_defs.h>
 #include <pico/stdio.h>
+#include <stdio.h>
 #include <platform/time.h>
 #include <platform/gpio.h>
 #include <platform/spi.h>
@@ -8,22 +8,26 @@
 #include <platform/pwm.h>
 #include <platform/adc.h>
 
+bool flag = false;
+
 int main()
 {
     stdio_init_all();
 
     auto id = mcu_add_timer_periodic(1000000, [](void*){
         // callback func
+        // inc++;
     }, nullptr);
 
-    mcu_gpio_init(0);
-    mcu_gpio_dir(0, MCU_GPIO_INPUT);
-    mcu_gpio_pull(0, MCU_GPIO_PULL_UP);
+    mcu_gpio_init(15);
+    mcu_gpio_dir(15, MCU_GPIO_INPUT);
+    mcu_gpio_pull(15, MCU_GPIO_PULL_UP);
     mcu_gpio_irq_set(
-        0,
+        15,
         MCU_GPIO_IRQ_FALLING | MCU_GPIO_IRQ_RISING,
         [](uint8_t pin, uint32_t events, void* context){
             // callback
+            flag = true;
         },
     nullptr
     );
@@ -79,4 +83,13 @@ int main()
     };
 
     mcu_adc_init(0, &cfg_adc);
+
+    while (1)
+    {
+        if (flag)
+        {
+            flag = false;
+            printf("Flag caught. ADC: %d\n");
+        }
+    }
 }

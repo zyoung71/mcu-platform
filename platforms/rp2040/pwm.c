@@ -6,9 +6,9 @@
 #include <hardware/platform_defs.h>
 #include <string.h>
 
-#ifdef PICO_RP2040
+#if PICO_RP2040
 #define NUM_PWM_CHANNELS_PER_SLICE 2
-#elif defined(PICO_RP2350)
+#elif PICO_RP2350
 #define NUM_PWM_CHANNELS_PER_SLICE 2
 #endif
 
@@ -37,20 +37,8 @@ typedef struct
 
 } rp_pwm_handle_t;
 
-static rp_pwm_slice_t slices[NUM_PWM_SLICES];
-static rp_pwm_handle_t handles[NUM_PWM_CHANNELS_PER_SLICE * NUM_PWM_SLICES];
-
-__attribute__((constructor)) static void init_slices_and_handles()
-{
-    for (size_t i = 0; i < NUM_PWM_SLICES; i++)
-    {
-        memset(&slices[i], 0, sizeof(rp_pwm_slice_t));
-    }
-    for (size_t i = 0; i < NUM_PWM_CHANNELS_PER_SLICE * NUM_PWM_SLICES; i++)
-    {
-        memset(&handles[i], 0, sizeof(rp_pwm_handle_t));
-    }
-}
+static rp_pwm_slice_t slices[NUM_PWM_SLICES] = {0};
+static rp_pwm_handle_t handles[NUM_PWM_CHANNELS_PER_SLICE * NUM_PWM_SLICES] = {0};
 
 static rp_pwm_handle_t* find_handle(mcu_pwm_t pwm)
 {
@@ -243,9 +231,7 @@ void mcu_pwm_set_frequency(mcu_pwm_t pwm, uint32_t frequency_hz)
 
         for (size_t i = 0; i < NUM_PWM_CHANNELS_PER_SLICE * NUM_PWM_SLICES; i++)
         {
-            if (!handles[i].active ||
-                handles[i].slice != h->slice ||
-                handles[i].channel != channel)
+            if (!handles[i].active || handles[i].slice != h->slice || handles[i].channel != channel)
             {
                 continue;
             }
