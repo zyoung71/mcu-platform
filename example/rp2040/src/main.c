@@ -1,4 +1,3 @@
-#include <cstdint>
 #include <hardware/irq.h>
 #include <pico/stdio.h>
 #include <pico/stdlib.h>
@@ -13,27 +12,23 @@
 
 bool flag = false;
 
+void timer_cb(void*) {}
+
+void gpio_cb(uint8_t pin, uint32_t events, void* context)
+{
+    flag = true;
+}
+
 int main()
 {
     stdio_init_all();
 
-    auto id = mcu_add_timer_periodic(1000000, [](void*){
-        // callback func
-        // inc++;
-    }, nullptr);
+    timer_id_t id = mcu_add_timer_periodic(1000000, &timer_cb, NULL);
 
     mcu_gpio_init(15);
     mcu_gpio_dir(15, MCU_GPIO_INPUT);
     mcu_gpio_pull(15, MCU_GPIO_PULL_UP);
-    mcu_gpio_irq_set(
-        15,
-        MCU_GPIO_IRQ_FALLING | MCU_GPIO_IRQ_RISING,
-        [](uint8_t pin, uint32_t events, void* context){
-            // callback
-            flag = true;
-        },
-    nullptr
-    );
+    mcu_gpio_irq_set(15, MCU_GPIO_IRQ_FALLING | MCU_GPIO_IRQ_RISING, &gpio_cb, NULL);
     mcu_gpio_irq_enable(15, true);
 
     mcu_timer_cancel(id);
@@ -82,12 +77,7 @@ int main()
     mcu_pwm_set_duty(0, UINT16_MAX / 2);
     mcu_pwm_set_enabled(0, true);
 
-    mcu_adc_config_t cfg_adc = {
-        .pin = 26,
-        .resolution_bits = 12
-    };
-
-    mcu_adc_init(0, &cfg_adc);
+    mcu_adc_init(26);
 
     while (1)
     {

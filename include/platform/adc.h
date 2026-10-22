@@ -7,18 +7,9 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef uint8_t mcu_adc_t;
-
-typedef struct
-{
-    uint8_t pin;
-    uint8_t resolution_bits;
-
-} mcu_adc_config_t;
-
-bool mcu_adc_init(mcu_adc_t adc, const mcu_adc_config_t* cfg);
-bool mcu_adc_deinit(mcu_adc_t adc);
-uint32_t mcu_adc_read(mcu_adc_t adc);
+bool mcu_adc_init(uint8_t adc_pin);
+bool mcu_adc_deinit(uint8_t adc_pin);
+uint32_t mcu_adc_read(uint8_t adc_pin);
 
 #ifdef __cplusplus
 }

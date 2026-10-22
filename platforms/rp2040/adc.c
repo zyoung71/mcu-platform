@@ -7,7 +7,6 @@
 typedef struct
 {
     bool active;
-    mcu_adc_t handle;
     uint8_t pin;
     uint8_t channel;
 
@@ -16,25 +15,25 @@ typedef struct
 static rp_adc_handle_t handles[NUM_ADC_CHANNELS] = {0};
 static bool adc_initialized = false;
 
-static rp_adc_handle_t* find_handle(mcu_adc_t adc)
+static rp_adc_handle_t* find_handle(uint8_t adc_pin)
 {
     for (size_t i = 0; i < NUM_ADC_CHANNELS; i++)
     {
-        if (handles[i].active && handles[i].handle == adc)
+        if (handles[i].active && handles[i].pin == adc_pin)
             return &handles[i];
     }
 
     return NULL;
 }
 
-bool mcu_adc_init(mcu_adc_t adc, const mcu_adc_config_t* cfg)
+bool mcu_adc_init(uint8_t adc_pin)
 {
-    if (find_handle(adc))
+    if (find_handle(adc_pin))
         return false;
 
     for (size_t i = 0; i < NUM_ADC_CHANNELS; i++)
     {
-        if (handles[i].active && handles[i].pin == cfg->pin)
+        if (handles[i].active && handles[i].pin == adc_pin)
             return false;
     }
 
@@ -58,17 +57,16 @@ bool mcu_adc_init(mcu_adc_t adc, const mcu_adc_config_t* cfg)
         adc_initialized = true;
     }
 
-    adc_gpio_init(cfg->pin);
+    adc_gpio_init(adc_pin);
 
-    slot->handle = adc;
-    slot->pin = cfg->pin;
-    slot->channel = cfg->pin - ADC_BASE_PIN;
+    slot->pin = adc_pin;
+    slot->channel = adc_pin - ADC_BASE_PIN;
     slot->active = true;
 
     return true;
 }
 
-uint32_t mcu_adc_read(mcu_adc_t adc)
+uint32_t mcu_adc_read(uint8_t adc)
 {
     rp_adc_handle_t* handle = find_handle(adc);
 
@@ -79,7 +77,7 @@ uint32_t mcu_adc_read(mcu_adc_t adc)
     return (uint32_t)adc_read();
 }
 
-uint16_t mcu_adc_get_max_value(mcu_adc_t adc)
+uint16_t mcu_adc_get_max_value(uint8_t adc)
 {
     if (!find_handle(adc))
         return 0;
@@ -87,7 +85,7 @@ uint16_t mcu_adc_get_max_value(mcu_adc_t adc)
     return 4095;
 }
 
-bool mcu_adc_deinit(mcu_adc_t adc)
+bool mcu_adc_deinit(uint8_t adc)
 {
     rp_adc_handle_t *handle = find_handle(adc);
 

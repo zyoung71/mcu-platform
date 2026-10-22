@@ -49,7 +49,7 @@ pico_sdk_init()
 
 add_subdirectory(../../platforms/rp2040 build)
 
-add_executable(${CMAKE_PROJECT_NAME} src/main.cpp)
+add_executable(${CMAKE_PROJECT_NAME} src/main.c)
 
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
     include
