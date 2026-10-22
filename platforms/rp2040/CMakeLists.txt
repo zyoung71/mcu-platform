@@ -10,11 +10,11 @@ if (NOT TARGET mcu-platform-rp2040)
         ${CMAKE_CURRENT_LIST_DIR}/adc.c
     )
 
-    target_include_directories(mcu-platform-rp2040 PUBLIC
-        ${CMAKE_CURRENT_LIST_DIR}/../../include
-    )
+    add_subdirectory(../../ build/mcu-platform-interface)
 
     target_link_libraries(mcu-platform-rp2040
+        mcu-platform-interface
+
         pico_time
         pico_sync
         hardware_spi
