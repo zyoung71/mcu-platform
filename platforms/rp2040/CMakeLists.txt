@@ -8,6 +8,7 @@ if (NOT TARGET mcu-platform-rp2040)
         ${CMAKE_CURRENT_LIST_DIR}/uart.c
         ${CMAKE_CURRENT_LIST_DIR}/pwm.c
         ${CMAKE_CURRENT_LIST_DIR}/adc.c
+        ${CMAKE_CURRENT_LIST_DIR}/util/queue.c
     )
 
     add_subdirectory(../../ build/mcu-platform-interface)

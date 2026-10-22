@@ -10,6 +10,8 @@
 #include <platform/pwm.h>
 #include <platform/adc.h>
 
+#include <platform/util/queue.h>
+
 bool flag = false;
 
 void timer_cb(void*) {}
@@ -78,6 +80,12 @@ int main()
     mcu_pwm_set_enabled(0, true);
 
     mcu_adc_init(26);
+
+    mcu_queue_t* queue;
+    mcu_queue_init(&queue, sizeof(int32_t), 8);
+
+    int32_t number = 50;
+    mcu_queue_try_push(queue, &number);
 
     while (1)
     {
