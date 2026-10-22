@@ -1,4 +1,7 @@
+#include <cstdint>
+#include <hardware/irq.h>
 #include <pico/stdio.h>
+#include <pico/stdlib.h>
 #include <stdio.h>
 #include <platform/time.h>
 #include <platform/gpio.h>
@@ -31,7 +34,7 @@ int main()
         },
     nullptr
     );
-    mcu_gpio_irq_enable(0, true);
+    mcu_gpio_irq_enable(15, true);
 
     mcu_timer_cancel(id);
 
@@ -76,6 +79,8 @@ int main()
     };
 
     mcu_pwm_init(0, 10, &cfg_pwm);
+    mcu_pwm_set_duty(0, UINT16_MAX / 2);
+    mcu_pwm_set_enabled(0, true);
 
     mcu_adc_config_t cfg_adc = {
         .pin = 26,
@@ -89,7 +94,10 @@ int main()
         if (flag)
         {
             flag = false;
-            printf("Flag caught. ADC: %d\n");
+            printf("Flag caught. ADC: %d\n", mcu_adc_read(0));
         }
+
+        sleep_ms(500);
+        printf("Hello World.\n");
     }
 }

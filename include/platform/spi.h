@@ -44,13 +44,13 @@ typedef struct
     
 } mcu_spi_bus_config_t;
 
-void mcu_spi_init(const mcu_spi_bus_config_t* cfg, mcu_spi_bus_t** bus);
-void mcu_spi_deinit(mcu_spi_bus_t* bus);
-void mcu_spi_begin(mcu_spi_bus_t* bus, const mcu_spi_config_t* cfg);
-void mcu_spi_end(mcu_spi_bus_t* bus);
-void mcu_spi_transfer(mcu_spi_bus_t* bus, const uint8_t* tx, uint8_t* rx, size_t len);
-void mcu_spi_read(mcu_spi_bus_t* bus, uint8_t* data, size_t len, uint8_t fill_byte);
-void mcu_spi_write(mcu_spi_bus_t* bus, const uint8_t* data, size_t len);
+bool mcu_spi_init(const mcu_spi_bus_config_t* cfg, mcu_spi_bus_t** bus);
+bool mcu_spi_deinit(mcu_spi_bus_t* bus);
+bool mcu_spi_begin(mcu_spi_bus_t* bus, const mcu_spi_config_t* cfg);
+bool mcu_spi_end(mcu_spi_bus_t* bus);
+bool mcu_spi_transfer(mcu_spi_bus_t* bus, const uint8_t* tx, uint8_t* rx, size_t len);
+bool mcu_spi_read(mcu_spi_bus_t* bus, uint8_t* data, size_t len, uint8_t fill_byte);
+bool mcu_spi_write(mcu_spi_bus_t* bus, const uint8_t* data, size_t len);
 
 #ifdef __cplusplus
 }

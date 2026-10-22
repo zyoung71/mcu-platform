@@ -111,8 +111,8 @@ static void gpio_irq_dispatch(uint pin, uint32_t events)
 
 __attribute__((constructor)) static void gpio_irq_init()
 {
-    gpio_set_irq_callback(&gpio_irq_dispatch);
     irq_set_enabled(IO_IRQ_BANK0, true);
+    gpio_set_irq_callback(&gpio_irq_dispatch);
 }
 
 void mcu_gpio_irq_set(uint8_t pin, uint32_t events, mcu_gpio_irq_callback_t cb, void* context)
@@ -122,7 +122,7 @@ void mcu_gpio_irq_set(uint8_t pin, uint32_t events, mcu_gpio_irq_callback_t cb, 
     if ((events & ~valid) != 0)
         return;
 
-    if (events != MCU_GPIO_IRQ_NONE && cb == NULL)
+    if (events != MCU_GPIO_IRQ_NONE && !cb)
         return;
 
     gpio_irq_entry_t* entry = &irq_entries[pin];

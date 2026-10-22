@@ -24,14 +24,14 @@ __attribute__((constructor)) static void init_bus_slots()
     mutex_init(&busses[1].mutex);
 }
 
-void mcu_spi_init(const mcu_spi_bus_config_t* cfg, mcu_spi_bus_t** bus)
+bool mcu_spi_init(const mcu_spi_bus_config_t* cfg, mcu_spi_bus_t** bus)
 {
     if (!cfg || !bus || cfg->controller >= NUM_SPIS || cfg->baudrate == 0)
-        return;
+        return false;
 
     rp_spi_bus_t* b = &busses[cfg->controller];
     if (b->initialized)
-        return;
+        return false;
 
     spi_init(b->instance, cfg->baudrate);
     gpio_set_function(cfg->sck_pin, GPIO_FUNC_SPI);
@@ -40,24 +40,27 @@ void mcu_spi_init(const mcu_spi_bus_config_t* cfg, mcu_spi_bus_t** bus)
 
     b->initialized = true;
     *bus = b;
+
+    return true;
 }
 
-void mcu_spi_deinit(mcu_spi_bus_t* bus)
+bool mcu_spi_deinit(mcu_spi_bus_t* bus)
 {
     if (!bus || !bus->initialized)
-        return;
+        return false;
 
     mutex_enter_blocking(&bus->mutex);
     spi_deinit(bus->instance);
 
     bus->initialized = false;
     mutex_exit(&bus->mutex);
+    return true;
 }
 
-void mcu_spi_begin(mcu_spi_bus_t* bus, const mcu_spi_config_t* cfg)
+bool mcu_spi_begin(mcu_spi_bus_t* bus, const mcu_spi_config_t* cfg)
 {
     if (!bus || !bus->initialized || !cfg || cfg->baudrate == 0)
-        return;
+        return false;
 
     mutex_enter_blocking(&bus->mutex);
 
@@ -72,48 +75,53 @@ void mcu_spi_begin(mcu_spi_bus_t* bus, const mcu_spi_config_t* cfg)
         (spi_cpha_t)clock_phase,
         cfg->order == MCU_SPI_MSB_FIRST ? SPI_MSB_FIRST : SPI_LSB_FIRST
     );
+    return true;
 }
 
-void mcu_spi_end(mcu_spi_bus_t* bus)
+bool mcu_spi_end(mcu_spi_bus_t* bus)
 {
     if (bus && bus->initialized)
+    {
         mutex_exit(&bus->mutex);
+        return true;
+    }
+    return false;
 }
 
-void mcu_spi_transfer(mcu_spi_bus_t* bus, const uint8_t* tx, uint8_t* rx, size_t len)
+bool mcu_spi_transfer(mcu_spi_bus_t* bus, const uint8_t* tx, uint8_t* rx, size_t len)
 {
     if (!bus || !bus->initialized || (!tx && !rx && len != 0))
-        return;
+        return false;
 
     if (len == 0)
-        return;
+        return false;
 
     if (tx && rx)
-        spi_write_read_blocking(bus->instance, tx, rx, len);
+        return spi_write_read_blocking(bus->instance, tx, rx, len) > 0;
     else if (tx)
-        spi_write_blocking(bus->instance, tx, len);
+        return spi_write_blocking(bus->instance, tx, len) > 0;
     else
-        spi_read_blocking(bus->instance, 0xFF, rx, len);
+        return spi_read_blocking(bus->instance, 0xFF, rx, len) > 0;
 }
 
-void mcu_spi_read(mcu_spi_bus_t* bus, uint8_t* data, size_t len, uint8_t fill_byte)
+bool mcu_spi_read(mcu_spi_bus_t* bus, uint8_t* data, size_t len, uint8_t fill_byte)
 {
     if (!bus || !bus->initialized || (!data && len != 0))
-        return;
+        return false;
 
     if (len == 0)
-        return;
+        return false;
 
-    spi_read_blocking(bus->instance, fill_byte, data, len);
+    return spi_read_blocking(bus->instance, fill_byte, data, len) > 0;
 }
 
-void mcu_spi_write(mcu_spi_bus_t* bus, const uint8_t* data, size_t len)
+bool mcu_spi_write(mcu_spi_bus_t* bus, const uint8_t* data, size_t len)
 {
     if (!bus || !bus->initialized || (!data && len != 0))
-        return;
+        return false;
 
     if (len == 0)
-        return;
+        return false;
 
-    spi_write_blocking(bus->instance, data, len);
+    return spi_write_blocking(bus->instance, data, len) > 0;
 }

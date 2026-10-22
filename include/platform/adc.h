@@ -16,8 +16,8 @@ typedef struct
 
 } mcu_adc_config_t;
 
-void mcu_adc_init(mcu_adc_t adc, const mcu_adc_config_t* cfg);
-void mcu_adc_deinit(mcu_adc_t adc);
+bool mcu_adc_init(mcu_adc_t adc, const mcu_adc_config_t* cfg);
+bool mcu_adc_deinit(mcu_adc_t adc);
 uint32_t mcu_adc_read(mcu_adc_t adc);
 
 #ifdef __cplusplus

@@ -27,15 +27,15 @@ static rp_adc_handle_t* find_handle(mcu_adc_t adc)
     return NULL;
 }
 
-void mcu_adc_init(mcu_adc_t adc, const mcu_adc_config_t* cfg)
+bool mcu_adc_init(mcu_adc_t adc, const mcu_adc_config_t* cfg)
 {
     if (find_handle(adc))
-        return;
+        return false;
 
     for (size_t i = 0; i < NUM_ADC_CHANNELS; i++)
     {
         if (handles[i].active && handles[i].pin == cfg->pin)
-            return;
+            return false;
     }
 
     rp_adc_handle_t* slot = NULL;
@@ -50,7 +50,7 @@ void mcu_adc_init(mcu_adc_t adc, const mcu_adc_config_t* cfg)
     }
 
     if (!slot)
-        return;
+        return false;
 
     if (!adc_initialized)
     {
@@ -64,6 +64,8 @@ void mcu_adc_init(mcu_adc_t adc, const mcu_adc_config_t* cfg)
     slot->pin = cfg->pin;
     slot->channel = cfg->pin - ADC_BASE_PIN;
     slot->active = true;
+
+    return true;
 }
 
 uint32_t mcu_adc_read(mcu_adc_t adc)
@@ -85,12 +87,13 @@ uint16_t mcu_adc_get_max_value(mcu_adc_t adc)
     return 4095;
 }
 
-void mcu_adc_deinit(mcu_adc_t adc)
+bool mcu_adc_deinit(mcu_adc_t adc)
 {
     rp_adc_handle_t *handle = find_handle(adc);
 
-    if (handle == NULL)
-        return;
+    if (!handle)
+        return false;
 
     memset(handle, 0, sizeof(*handle));
+    return true;
 }

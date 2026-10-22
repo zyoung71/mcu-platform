@@ -80,18 +80,18 @@ static bool calculate_pwm(uint32_t frequency_hz, uint8_t resolution_bits, uint16
     return true;
 }
 
-void mcu_pwm_init(mcu_pwm_t pwm, uint8_t pin, const mcu_pwm_config_t* config)
+bool mcu_pwm_init(mcu_pwm_t pwm, uint8_t pin, const mcu_pwm_config_t* config)
 {
     if (pwm == 0 || !config)
-        return;
+        return false;
 
     if (find_handle(pwm))
-        return;
+        return false;
 
     rp_pwm_handle_t* h = find_free_handle();
 
     if (!h)
-        return;
+        return false;
 
     uint slice = pwm_gpio_to_slice_num(pin);
     uint channel = pwm_gpio_to_channel(pin);
@@ -103,18 +103,18 @@ void mcu_pwm_init(mcu_pwm_t pwm, uint8_t pin, const mcu_pwm_config_t* config)
      * GPIO. Never claim a channel already in use.
      */
     if (s->channel_active[channel])
-        return;
+        return false;
 
     uint16_t wrap;
     float divider;
 
     if (!calculate_pwm(config->frequency_hz, config->resolution_bits, &wrap, &divider))
-        return;
+        return false;
 
     if (s->configured)
     {
         if (s->wrap != wrap || s->resolution_bits != config->resolution_bits || s->frequency_hz != config->frequency_hz)
-            return;
+            return false;
     }
     else
     {
@@ -152,14 +152,16 @@ void mcu_pwm_init(mcu_pwm_t pwm, uint8_t pin, const mcu_pwm_config_t* config)
 
     pwm_set_chan_level(slice, channel, 0);
     pwm_set_enabled(slice, true);
+
+    return true;
 }
 
-void mcu_pwm_deinit(mcu_pwm_t pwm)
+bool mcu_pwm_deinit(mcu_pwm_t pwm)
 {
     rp_pwm_handle_t* h = find_handle(pwm);
 
     if (!h)
-        return;
+        return false;
 
     uint slice = h->slice;
     uint channel = h->channel;
@@ -187,34 +189,37 @@ void mcu_pwm_deinit(mcu_pwm_t pwm)
     }
 
     memset(h, 0, sizeof(*h));
+    return true;
 }
 
-void mcu_pwm_set_duty(mcu_pwm_t pwm, uint16_t duty)
+bool mcu_pwm_set_duty(mcu_pwm_t pwm, uint16_t duty)
 {
     rp_pwm_handle_t* h = find_handle(pwm);
 
     if (!h || duty > h->max_duty)
-        return;
+        return false;
 
     pwm_set_chan_level(h->slice, h->channel, duty);
+    return true;
 }
 
-void mcu_pwm_set_enabled(mcu_pwm_t pwm, bool enabled)
+bool mcu_pwm_set_enabled(mcu_pwm_t pwm, bool enabled)
 {
     rp_pwm_handle_t* h = find_handle(pwm);
 
     if (!h)
-        return;
+        return false;
 
     pwm_set_enabled(h->slice, enabled);
+    return true;
 }
 
-void mcu_pwm_set_frequency(mcu_pwm_t pwm, uint32_t frequency_hz)
+bool mcu_pwm_set_frequency(mcu_pwm_t pwm, uint32_t frequency_hz)
 {
     rp_pwm_handle_t* h = find_handle(pwm);
 
     if (!h)
-        return;
+        return false;
 
     rp_pwm_slice_t *slice = &slices[h->slice];
 
@@ -222,7 +227,7 @@ void mcu_pwm_set_frequency(mcu_pwm_t pwm, uint32_t frequency_hz)
     float new_divider;
 
     if (!calculate_pwm(frequency_hz, slice->resolution_bits, &new_wrap, &new_divider))
-        return;
+        return false;
 
     for (uint8_t channel = 0; channel < NUM_PWM_CHANNELS_PER_SLICE; channel++)
     {
@@ -237,7 +242,7 @@ void mcu_pwm_set_frequency(mcu_pwm_t pwm, uint32_t frequency_hz)
             }
 
             if (handles[i].pwm != pwm && (slice->frequency_hz != frequency_hz))
-                return;
+                return false;
         }
     }
 
@@ -250,4 +255,6 @@ void mcu_pwm_set_frequency(mcu_pwm_t pwm, uint32_t frequency_hz)
     slice->wrap = new_wrap;
     slice->divider = new_divider;
     slice->frequency_hz = frequency_hz;
+
+    return true;
 }

@@ -39,16 +39,14 @@ static uart_parity_t translate_parity_to_rp(mcu_uart_parity_t parity)
     }
 }
 
-void mcu_uart_init(const mcu_uart_bus_config_t* cfg, mcu_uart_bus_t** bus)
+bool mcu_uart_init(const mcu_uart_bus_config_t* cfg, mcu_uart_bus_t** bus)
 {
     if (!cfg || !bus || cfg->baudrate == 0 || cfg->data_bits < 5 || cfg->data_bits > 8 || cfg->stop_bits != 1 || cfg->stop_bits != 2)
-        return;
+        return false;
 
     rp_uart_bus_t* b = &busses[cfg->controller];
     if (b->initialized)
-        return;
-
-    
+        return false;
 
     uart_init(b->instance, cfg->baudrate);
     uart_set_format(b->instance, cfg->data_bits, cfg->stop_bits, translate_parity_to_rp(cfg->parity));
@@ -58,9 +56,11 @@ void mcu_uart_init(const mcu_uart_bus_config_t* cfg, mcu_uart_bus_t** bus)
 
     *bus = b;
     b->initialized = true;
+
+    return true;
 }
 
-void mcu_uart_deinit(mcu_uart_bus_t* bus)
+bool mcu_uart_deinit(mcu_uart_bus_t* bus)
 {
     if (bus && bus->initialized)
     {
@@ -69,46 +69,55 @@ void mcu_uart_deinit(mcu_uart_bus_t* bus)
 
         bus->initialized = false;
         mutex_exit(&bus->mutex);
+
+        return true;
     }
+    return false;
 }
 
-void mcu_uart_begin(mcu_uart_bus_t* bus, const mcu_uart_bus_config_t* cfg)
+bool mcu_uart_begin(mcu_uart_bus_t* bus, const mcu_uart_bus_config_t* cfg)
 {
     if (!bus || !bus->initialized || !cfg || cfg->baudrate != 0)
-        return;
+        return false;
 
     mutex_enter_blocking(&bus->mutex);
 
     uart_set_format(bus->instance, cfg->data_bits, cfg->stop_bits, translate_parity_to_rp(cfg->parity));
-    uart_set_baudrate(bus->instance, cfg->baudrate);
+    return uart_set_baudrate(bus->instance, cfg->baudrate) > 0;
 }
 
-void mcu_uart_end(mcu_uart_bus_t* bus)
+bool mcu_uart_end(mcu_uart_bus_t* bus)
 {
     if (bus && bus->initialized)
+    {
         mutex_exit(&bus->mutex);
+        return true;
+    }
+    return false;
 }
 
-void mcu_uart_read(mcu_uart_bus_t* bus, uint8_t* data, size_t len)
+bool mcu_uart_read(mcu_uart_bus_t* bus, uint8_t* data, size_t len)
 {
     if (!bus || !bus->initialized || (!data && len != 0))   
-        return;
+        return false;
 
     if (len == 0)
-        return;
+        return false;
 
     uart_read_blocking(bus->instance, data, len);
+    return true;
 }
 
-void mcu_uart_write(mcu_uart_bus_t* bus, const uint8_t* data, size_t len)
+bool mcu_uart_write(mcu_uart_bus_t* bus, const uint8_t* data, size_t len)
 {
     if (!bus || !bus->initialized || (!data && len != 0))
-        return;
+        return false;
 
     if (len == 0)
-        return;
+        return false;
 
     uart_write_blocking(bus->instance, data, len);
+    return true;
 }
 
 size_t mcu_uart_available(mcu_uart_bus_t* bus)

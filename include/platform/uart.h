@@ -32,12 +32,12 @@ typedef struct
 
 } mcu_uart_bus_config_t;
 
-void mcu_uart_init(const mcu_uart_bus_config_t* cfg, mcu_uart_bus_t** bus);
-void mcu_uart_deinit(mcu_uart_bus_t* bus);
-void mcu_uart_begin(mcu_uart_bus_t* bus, const mcu_uart_bus_config_t* cfg);
-void mcu_uart_end(mcu_uart_bus_t* bus);
-void mcu_uart_read(mcu_uart_bus_t* bus, uint8_t* data, size_t len);
-void mcu_uart_write(mcu_uart_bus_t* bus, const uint8_t* data, size_t len);
+bool mcu_uart_init(const mcu_uart_bus_config_t* cfg, mcu_uart_bus_t** bus);
+bool mcu_uart_deinit(mcu_uart_bus_t* bus);
+bool mcu_uart_begin(mcu_uart_bus_t* bus, const mcu_uart_bus_config_t* cfg);
+bool mcu_uart_end(mcu_uart_bus_t* bus);
+bool mcu_uart_read(mcu_uart_bus_t* bus, uint8_t* data, size_t len);
+bool mcu_uart_write(mcu_uart_bus_t* bus, const uint8_t* data, size_t len);
 size_t mcu_uart_available(mcu_uart_bus_t* bus);
 
 #ifdef __cplusplus
