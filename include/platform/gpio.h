@@ -50,6 +50,7 @@ void mcu_gpio_init(uint8_t pin);
 void mcu_gpio_deinit(uint8_t pin);
 void mcu_gpio_dir(uint8_t pin, mcu_gpio_dir_t dir);
 void mcu_gpio_put(uint8_t pin, bool high);
+bool mcu_gpio_get(uint8_t pin);
 void mcu_gpio_pull(uint8_t pin, mcu_gpio_pull_t pull);
 void mcu_gpio_func(uint8_t pin, mcu_gpio_func_t func);
 void mcu_gpio_irq_set(uint8_t pin, uint32_t events, mcu_gpio_irq_callback_t cb, void* context);

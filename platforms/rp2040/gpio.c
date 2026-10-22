@@ -22,6 +22,11 @@ void mcu_gpio_put(uint8_t pin, bool high)
     gpio_put(pin, high);
 }
 
+bool mcu_gpio_get(uint8_t pin)
+{
+    return gpio_get(pin);
+}
+
 void mcu_gpio_pull(uint8_t pin, mcu_gpio_pull_t pull)
 {
     gpio_set_pulls(pin, pull == MCU_GPIO_PULL_UP, pull == MCU_GPIO_PULL_DOWN);
