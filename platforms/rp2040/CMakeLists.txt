@@ -25,19 +25,21 @@ if (NOT TARGET mcu-platform-rp2040)
         hardware_clocks
     )
 
-    target_compile_definitions(mcu-platform-rp2040 PUBLIC
-        MCU_PLATFORM_NAME="rp2040"
+    set(PLATFORM_NAME "rp2040")
+    set(NUM_GPIO 30)
+    set(NUM_SPI 2)
+    set(NUM_I2C 2)
+    set(NUM_UART 2)
+    set(NUM_ADC 4)
+    set(NUM_PWM_SLICES 8)
+    set(NUM_PWM_CHANNELS 16)
+    set(NUM_TIMERS 4)
+    set(NUM_PIO 2)
 
-        MCU_NUM_GPIO=30
-        MCU_NUM_CPU_CORES=2
-        MCU_NUM_SPI=2
-        MCU_NUM_I2C=2
-        MCU_NUM_UART=2
-        MCU_NUM_PWM_SLICE=8
-        MCU_NUM_PWM_CHANNELS=16
-        MCU_NUM_ADC=4
-        MCU_NUM_TIMERS=4
-        MCU_NUM_PIO=2
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../include/platform/platform_config.h.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/generated/platform_config.h"
+        @ONLY
     )
 
 endif()

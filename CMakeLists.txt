@@ -4,6 +4,7 @@ if (NOT TARGET mcu-platform-interface)
 
     target_include_directories(mcu-platform-interface INTERFACE
         include
+        generated
     )
 
 endif()
