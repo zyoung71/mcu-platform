@@ -38,7 +38,7 @@ if (NOT TARGET mcu-platform-rp2040)
 
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/../../include/platform/platform_config.h.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/generated/platform_config.h"
+        "${PROJECT_BINARY_DIR}/generated/platform/platform_config.h"
         @ONLY
     )
 
