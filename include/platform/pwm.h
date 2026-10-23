@@ -7,21 +7,15 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef uint32_t mcu_pwm_t;
+bool mcu_pwm_init(uint8_t pin, float frequency_hz, bool inverted);
+bool mcu_pwm_deinit(uint8_t pin);
 
-typedef struct
-{
-    uint32_t frequency_hz;
-    uint16_t resolution_bits;
-    bool inverted;
+bool mcu_pwm_set_enabled(uint8_t pin, bool enabled);
+bool mcu_pwm_set_duty(uint8_t pin, float duty);
+bool mcu_pwm_set_frequency(uint8_t pin, float frequency_hz);
 
-} mcu_pwm_config_t;
-
-bool mcu_pwm_init(mcu_pwm_t pwm, uint8_t pin, const mcu_pwm_config_t* cfg);
-bool mcu_pwm_deinit(mcu_pwm_t pwm);
-bool mcu_pwm_set_duty(mcu_pwm_t pwm, uint16_t duty);
-bool mcu_pwm_set_frequency(mcu_pwm_t pwm, uint32_t frequency_hz);
-bool mcu_pwm_set_enabled(mcu_pwm_t pwm, bool enabled);
+float mcu_pwm_get_duty(uint8_t pin);
+float mcu_pwm_get_frequency(uint8_t pin);
 
 #ifdef __cplusplus
 }

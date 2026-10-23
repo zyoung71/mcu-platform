@@ -69,15 +69,9 @@ int main()
     mcu_uart_bus_t* bus_uart;
     mcu_uart_init(&cfg_uart, &bus_uart);
 
-    mcu_pwm_config_t cfg_pwm = {
-        .frequency_hz = 4000,
-        .resolution_bits = 16,
-        .inverted = false
-    };
-
-    mcu_pwm_init(0, 10, &cfg_pwm);
-    mcu_pwm_set_duty(0, UINT16_MAX / 2);
-    mcu_pwm_set_enabled(0, true);
+    mcu_pwm_init(8, 1000, false);
+    mcu_pwm_set_duty(8, 0.5f);
+    mcu_pwm_set_enabled(8, true);
 
     mcu_adc_init(26);
 
@@ -92,7 +86,7 @@ int main()
         if (flag)
         {
             flag = false;
-            printf("Flag caught. ADC: %d\n", mcu_adc_read(0));
+            printf("Flag caught. ADC: %d\n", mcu_adc_read(26));
         }
 
         sleep_ms(500);

@@ -3,8 +3,8 @@
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 
-#include <hardware/platform_defs.h>
 #include <string.h>
+#include <math.h>
 
 #if PICO_RP2040
 #define NUM_PWM_CHANNELS_PER_SLICE 2
@@ -14,247 +14,341 @@
 
 typedef struct
 {
-    uint16_t wrap;
-    bool configured;
-    uint8_t resolution_bits;
-    uint32_t frequency_hz;
-    float divider;
+    bool active;
+    bool enabled;
+    bool inverted;
+    uint8_t pin;
+    float duty;
 
-    bool channel_active[NUM_PWM_CHANNELS_PER_SLICE];
-    bool channel_inverted[NUM_PWM_CHANNELS_PER_SLICE];
-    uint8_t channel_pin[NUM_PWM_CHANNELS_PER_SLICE];
-
-} rp_pwm_slice_t;
+} rp_pwm_channel_t;
 
 typedef struct
 {
-    mcu_pwm_t pwm;
-    bool active;
-    uint8_t pin;
-    uint8_t slice;
-    uint8_t channel;
-    uint16_t max_duty;
+    rp_pwm_channel_t channels[NUM_PWM_CHANNELS_PER_SLICE];
 
-} rp_pwm_handle_t;
+    float actual_frequency_hz;
+    uint16_t divider;
+    uint16_t wrap;
+    bool configured;
+
+} rp_pwm_slice_t;
 
 static rp_pwm_slice_t slices[NUM_PWM_SLICES] = {0};
-static rp_pwm_handle_t handles[NUM_PWM_CHANNELS_PER_SLICE * NUM_PWM_SLICES] = {0};
 
-static rp_pwm_handle_t* find_handle(mcu_pwm_t pwm)
+static bool calculate_timing(float frequency_hz, uint16_t* wrap, uint16_t* divider, float* actual_frequency_hz)
 {
-    for (size_t i = 0; i < NUM_PWM_CHANNELS_PER_SLICE * NUM_PWM_SLICES; i++)
+    if (frequency_hz == 0 || !wrap || !divider || !actual_frequency_hz)
+        return false;
+
+    const double sysclk = (double)clock_get_hz(clk_sys);
+
+    for (int bits = 16; bits >= 2; --bits) 
     {
-        if (handles[i].active && handles[i].pwm == pwm)
-            return &handles[i];
+        const uint32_t counts = (1u << bits) - 1u;
+        const double ideal_divider = (sysclk * 16.0) / ((double)frequency_hz * (double)counts);
+
+        const uint64_t rounded_divider =
+            (uint64_t)floor(ideal_divider + 0.5);
+
+        if (rounded_divider < 16u)
+            continue;
+
+        if (rounded_divider > 4095u)
+            return false;
+
+        const double actual_frequency = (sysclk * 16.0) / ((double)rounded_divider * (double)counts);
+
+        if (!isfinite(actual_frequency) || actual_frequency <= 0.0)
+            return false;
+
+        *wrap = (uint16_t)(counts - 1u);
+        *divider = (uint16_t)rounded_divider;
+        *actual_frequency_hz = (float)actual_frequency;
+
+        return true;
     }
-    return NULL;
+
+    return false;
 }
 
-static rp_pwm_handle_t* find_free_handle(void)
+static bool get_channel(uint8_t pin, rp_pwm_slice_t** slice_state, uint* slice_number, uint* channel_number)
 {
-    for (size_t i = 0; i < NUM_PWM_CHANNELS_PER_SLICE * NUM_PWM_SLICES; i++) {
-        if (!handles[i].active)
-            return &handles[i];
-    }
-    return NULL;
-}
+    const uint slice = pwm_gpio_to_slice_num(pin);
+    const uint channel = pwm_gpio_to_channel(pin);
 
-static bool calculate_pwm(uint32_t frequency_hz, uint8_t resolution_bits, uint16_t* wrap, float* divider)
-{
-    if (frequency_hz == 0 || resolution_bits < 2 || resolution_bits > 16 || !wrap || !divider)
+    if (slice >= NUM_PWM_SLICES)
         return false;
 
-    uint32_t clock_hz = clock_get_hz(clk_sys);
-    uint32_t max_duty = (1u << resolution_bits) - 1u;
-    uint32_t top = max_duty - 1u;
+    rp_pwm_slice_t* state = &slices[slice];
 
-    float div = (float)clock_hz /
-        ((float)frequency_hz * (float)(top + 1u));
-
-    if (div < 1.0f || div >= 256.0f)
+    if (!state->configured || !state->channels[channel].active)
         return false;
 
-    *wrap = (uint16_t)top;
-    *divider = div;
+    if (state->channels[channel].pin != pin)
+        return false;
+
+    if (slice_state)
+        *slice_state = state;
+
+    if (slice_number)
+        *slice_number = slice;
+
+    if (channel_number)
+        *channel_number = channel;
 
     return true;
 }
 
-bool mcu_pwm_init(mcu_pwm_t pwm, uint8_t pin, const mcu_pwm_config_t* config)
+static void update_polarity(uint slice, const rp_pwm_slice_t* state)
 {
-    if (pwm == 0 || !config)
+    pwm_set_output_polarity(
+        slice,
+        state->channels[PWM_CHAN_A].active &&
+            state->channels[PWM_CHAN_A].inverted,
+        state->channels[PWM_CHAN_B].active &&
+            state->channels[PWM_CHAN_B].inverted
+    );
+}
+
+static bool any_channel_active(const rp_pwm_slice_t* state)
+{
+    return state->channels[PWM_CHAN_A].active || state->channels[PWM_CHAN_B].active;
+}
+
+bool mcu_pwm_init(uint8_t pin, float frequency_hz, bool inverted)
+{
+    if (frequency_hz == 0.f)
         return false;
 
-    if (find_handle(pwm))
-        return false;
-
-    rp_pwm_handle_t* h = find_free_handle();
-
-    if (!h)
-        return false;
-
-    uint slice = pwm_gpio_to_slice_num(pin);
-    uint channel = pwm_gpio_to_channel(pin);
-
-    rp_pwm_slice_t* s = &slices[slice];
-
-    /*
-     * A pin's PWM slice/channel may also be exposed on another
-     * GPIO. Never claim a channel already in use.
-     */
-    if (s->channel_active[channel])
-        return false;
+    if (frequency_hz < 0.f)
+    {
+        frequency_hz = -frequency_hz;
+        inverted = !inverted;
+    }
 
     uint16_t wrap;
-    float divider;
+    uint16_t divider;
+    float actual_frequency_hz;
 
-    if (!calculate_pwm(config->frequency_hz, config->resolution_bits, &wrap, &divider))
+    if (!calculate_timing(frequency_hz, &wrap, &divider, &actual_frequency_hz))
         return false;
 
-    if (s->configured)
+    const uint slice = pwm_gpio_to_slice_num(pin);
+    const uint channel = pwm_gpio_to_channel(pin);
+
+    rp_pwm_slice_t* state = &slices[slice];
+
+    // note certain pins share a pwm slice. automatic rejection is present
+    if (state->channels[channel].active)
+        return false;
+
+    if (state->configured)
     {
-        if (s->wrap != wrap || s->resolution_bits != config->resolution_bits || s->frequency_hz != config->frequency_hz)
+        if (state->wrap != wrap || state->divider != divider)
             return false;
     }
     else
     {
-        pwm_config hw_config = pwm_get_default_config();
+        pwm_config hardware_config = pwm_get_default_config();
 
-        pwm_config_set_wrap(&hw_config, wrap);
-        pwm_config_set_clkdiv(&hw_config, divider);
+        pwm_config_set_wrap(&hardware_config, wrap);
+        pwm_config_set_clkdiv_int_frac4(&hardware_config, (uint8_t)(divider / 16u), (uint8_t)(divider % 16u));
+        pwm_init(slice, &hardware_config, true);
 
-        /*
-         * Start disabled. Configure the output before enabling.
-         * Do not call pwm_init() again for the other channel.
-         */
-        pwm_init(slice, &hw_config, false);
-
-        s->configured = true;
-        s->wrap = wrap;
-        s->resolution_bits = config->resolution_bits;
-        s->frequency_hz = config->frequency_hz;
-        s->divider = divider;
+        state->configured = true;
+        state->wrap = wrap;
+        state->divider = divider;
+        state->actual_frequency_hz = actual_frequency_hz;
     }
 
-    s->channel_active[channel] = true;
-    s->channel_inverted[channel] = config->inverted;
-    s->channel_pin[channel] = pin;
+    rp_pwm_channel_t* channel_state = &state->channels[channel];
 
-    pwm_set_output_polarity(slice, s->channel_inverted[PWM_CHAN_A], s->channel_inverted[PWM_CHAN_B]);
+    channel_state->active = true;
+    channel_state->enabled = true;
+    channel_state->inverted = inverted;
+    channel_state->pin = pin;
+    channel_state->duty = 0;
+
+    pwm_set_chan_level(slice, channel, 0);
+    update_polarity(slice, state);
+
     gpio_set_function(pin, GPIO_FUNC_PWM);
 
-    h->active = true;
-    h->pwm = pwm;
-    h->pin = pin;
-    h->slice = (uint8_t)slice;
-    h->channel = (uint8_t)channel;
-    h->max_duty = (uint16_t)((1u << config->resolution_bits) - 1u);
-
-    pwm_set_chan_level(slice, channel, 0);
-    pwm_set_enabled(slice, true);
-
     return true;
 }
 
-bool mcu_pwm_deinit(mcu_pwm_t pwm)
+bool mcu_pwm_deinit(uint8_t pin)
 {
-    rp_pwm_handle_t* h = find_handle(pwm);
+    rp_pwm_slice_t* state;
+    uint slice;
+    uint channel;
 
-    if (!h)
+    if (!get_channel(pin, &state, &slice, &channel))
         return false;
 
-    uint slice = h->slice;
-    uint channel = h->channel;
+    rp_pwm_channel_t* channel_state = &state->channels[channel];
 
-    rp_pwm_slice_t* s = &slices[slice];
+    gpio_set_function(pin, GPIO_FUNC_SIO);
+    gpio_set_dir(pin, GPIO_OUT);
+    gpio_put(pin, channel_state->inverted);
 
-    pwm_set_chan_level(slice, channel, 0);
+    memset(channel_state, 0, sizeof(*channel_state));
 
-    gpio_set_function(h->pin, GPIO_FUNC_SIO);
-    gpio_set_dir(h->pin, GPIO_OUT);
-    gpio_put(h->pin, false);
-
-    s->channel_active[channel] = false;
-    s->channel_inverted[channel] = false;
-    s->channel_pin[channel] = 0;
-
-    if (!s->channel_active[PWM_CHAN_A] && !s->channel_active[PWM_CHAN_B])
+    if (!any_channel_active(state))
     {
         pwm_set_enabled(slice, false);
-        memset(s, 0, sizeof(*s));
+        memset(state, 0, sizeof(*state));
     }
     else
-    {
-        pwm_set_output_polarity(slice, s->channel_inverted[PWM_CHAN_A], s->channel_inverted[PWM_CHAN_B]);
+        update_polarity(slice, state);
+
+    return true;
+}
+
+static bool convert_duty(float duty, uint16_t wrap, uint16_t *level)
+{
+    if (!isfinite(duty) || !level)
+        return false;
+
+    if (duty > 1.f)
+        duty = 1.f;
+    if (duty < 0.f)
+        duty = 0.f;
+
+    const uint32_t counts = (uint32_t)wrap + 1u;
+
+    uint32_t value = (uint32_t)floor((double)duty * counts + 0.5);
+
+    if (value > counts)
+        value = counts;
+
+    *level = (uint16_t)value;
+    return true;
+}
+
+bool mcu_pwm_set_duty(uint8_t pin, float duty)
+{
+    if (!isfinite(duty) || duty < 0.0f || duty > 1.0f)
+        return false;
+
+    rp_pwm_slice_t* state;
+    uint slice;
+    uint channel;
+
+    if (!get_channel(pin, &state, &slice, &channel))
+        return false;
+
+    uint16_t level;
+
+    if (!convert_duty(duty, state->wrap, &level))
+        return false;
+
+    pwm_set_chan_level(slice, channel, level);
+    state->channels[channel].duty = duty;
+
+    return true;
+}
+
+bool mcu_pwm_set_enabled(uint8_t pin, bool enabled)
+{
+    rp_pwm_slice_t* state;
+    uint slice;
+    uint channel;
+
+    if (!get_channel(pin, &state, &slice, &channel))
+        return false;
+
+    rp_pwm_channel_t* channel_state = &state->channels[channel];
+
+    if (channel_state->enabled == enabled)
+        return true;
+
+    if (enabled) {
+        gpio_set_function(pin, GPIO_FUNC_PWM);
+        channel_state->enabled = true;
+    } else {
+        gpio_set_function(pin, GPIO_FUNC_SIO);
+        gpio_set_dir(pin, GPIO_OUT);
+        gpio_put(pin, channel_state->inverted);
+
+        channel_state->enabled = false;
     }
 
-    memset(h, 0, sizeof(*h));
     return true;
 }
 
-bool mcu_pwm_set_duty(mcu_pwm_t pwm, uint16_t duty)
+bool mcu_pwm_set_frequency(uint8_t pin, float frequency_hz)
 {
-    rp_pwm_handle_t* h = find_handle(pwm);
+    rp_pwm_slice_t* state;
+    uint slice;
+    uint channel;
 
-    if (!h || duty > h->max_duty)
+    if (!get_channel(pin, &state, &slice, &channel))
         return false;
-
-    pwm_set_chan_level(h->slice, h->channel, duty);
-    return true;
-}
-
-bool mcu_pwm_set_enabled(mcu_pwm_t pwm, bool enabled)
-{
-    rp_pwm_handle_t* h = find_handle(pwm);
-
-    if (!h)
-        return false;
-
-    pwm_set_enabled(h->slice, enabled);
-    return true;
-}
-
-bool mcu_pwm_set_frequency(mcu_pwm_t pwm, uint32_t frequency_hz)
-{
-    rp_pwm_handle_t* h = find_handle(pwm);
-
-    if (!h)
-        return false;
-
-    rp_pwm_slice_t *slice = &slices[h->slice];
 
     uint16_t new_wrap;
-    float new_divider;
+    uint16_t new_divider;
+    float actual_frequency_hz;
 
-    if (!calculate_pwm(frequency_hz, slice->resolution_bits, &new_wrap, &new_divider))
+    if (!calculate_timing(frequency_hz, &new_wrap, &new_divider, &actual_frequency_hz))
         return false;
 
-    for (uint8_t channel = 0; channel < NUM_PWM_CHANNELS_PER_SLICE; channel++)
+    if (new_wrap == state->wrap && new_divider == state->divider)
     {
-        if (!slice->channel_active[channel])
-            continue;
-
-        for (size_t i = 0; i < NUM_PWM_CHANNELS_PER_SLICE * NUM_PWM_SLICES; i++)
-        {
-            if (!handles[i].active || handles[i].slice != h->slice || handles[i].channel != channel)
-            {
-                continue;
-            }
-
-            if (handles[i].pwm != pwm && (slice->frequency_hz != frequency_hz))
-                return false;
-        }
+        state->actual_frequency_hz = actual_frequency_hz;
+        return true;
     }
 
-    pwm_config config = pwm_get_default_config();
+    const uint other_channel = channel ^ 1u;
 
-    pwm_config_set_wrap(&config, new_wrap);
-    pwm_config_set_clkdiv(&config, new_divider);
-    pwm_init(h->slice, &config, false);
+    if (state->channels[other_channel].active)
+        return false;
 
-    slice->wrap = new_wrap;
-    slice->divider = new_divider;
-    slice->frequency_hz = frequency_hz;
+    uint16_t level;
+
+    if (!convert_duty(state->channels[channel].duty, new_wrap, &level))
+        return false;
+
+    const bool was_enabled = (pwm_hw->slice[slice].csr & PWM_CH0_CSR_EN_BITS) != 0;
+
+    pwm_set_enabled(slice, false);
+
+    pwm_set_wrap(slice, new_wrap);
+    pwm_set_clkdiv_int_frac4(
+        slice,
+        (uint8_t)(new_divider / 16u),
+        (uint8_t)(new_divider % 16u));
+
+    pwm_set_chan_level(slice, channel, level);
+
+    state->wrap = new_wrap;
+    state->divider = new_divider;
+    state->actual_frequency_hz = actual_frequency_hz;
+
+    if (was_enabled)
+        pwm_set_enabled(slice, true);
 
     return true;
+}
+
+
+float mcu_pwm_get_frequency(uint8_t pin)
+{
+    rp_pwm_slice_t* state;
+
+    if (!get_channel(pin, &state, NULL, NULL))
+        return 0.f;
+
+    return state->actual_frequency_hz;
+}
+
+float mcu_pwm_get_duty(uint8_t pin)
+{
+    rp_pwm_slice_t* state;
+    uint channel;
+
+    if (!get_channel(pin, &state, NULL, &channel))
+        return false;
+
+    return state->channels[channel].duty;
 }
