@@ -7,6 +7,9 @@ extern "C" {
 #include <stdint.h>
 #include <stdbool.h>
 
+#define INVALID_UNUSED_GPIO ((uint8_t)-1)
+#define is_gpio_invalid_or_unused(pin) (pin == INVALID_UNUSED_GPIO)
+
 typedef enum
 {
     MCU_GPIO_INPUT,
