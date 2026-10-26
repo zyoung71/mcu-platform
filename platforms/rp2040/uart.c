@@ -2,6 +2,7 @@
 #include "hardware/uart.h"
 #include "hardware/gpio.h"
 #include "pico/mutex.h"
+#include "platform/util/util.h"
 
 typedef struct mcu_uart_bus
 {
@@ -51,8 +52,11 @@ bool mcu_uart_init(const mcu_uart_bus_config_t* cfg, mcu_uart_bus_t** bus)
     uart_init(b->instance, cfg->baudrate);
     uart_set_format(b->instance, cfg->data_bits, cfg->stop_bits, translate_parity_to_rp(cfg->parity));
     uart_set_fifo_enabled(b->instance, true);
-    gpio_set_function(cfg->tx_pin, GPIO_FUNC_UART);
-    gpio_set_function(cfg->rx_pin, GPIO_FUNC_UART);
+
+    if (is_gpio_invalid_or_unused(cfg->tx_pin))
+        gpio_set_function(cfg->tx_pin, GPIO_FUNC_UART);
+    if (is_gpio_invalid_or_unused(cfg->rx_pin))
+        gpio_set_function(cfg->rx_pin, GPIO_FUNC_UART);
 
     *bus = b;
     b->initialized = true;

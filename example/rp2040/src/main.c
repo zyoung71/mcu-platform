@@ -25,7 +25,7 @@ int main()
 {
     stdio_init_all();
 
-    timer_id_t id = mcu_add_timer_periodic(1000000, &timer_cb, NULL);
+    mcu_timer_id_t id = mcu_add_timer_periodic(1000000, &timer_cb, NULL);
 
     mcu_gpio_init(15);
     mcu_gpio_dir(15, MCU_GPIO_INPUT);

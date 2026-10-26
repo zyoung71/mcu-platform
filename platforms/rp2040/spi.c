@@ -1,4 +1,5 @@
 #include "platform/spi.h"
+#include "platform/util/util.h"
 #include "hardware/spi.h"
 #include "hardware/gpio.h"
 #include "pico/mutex.h"
@@ -34,9 +35,13 @@ bool mcu_spi_init(const mcu_spi_bus_config_t* cfg, mcu_spi_bus_t** bus)
         return false;
 
     spi_init(b->instance, cfg->baudrate);
-    gpio_set_function(cfg->sck_pin, GPIO_FUNC_SPI);
-    gpio_set_function(cfg->tx_pin, GPIO_FUNC_SPI);
-    gpio_set_function(cfg->rx_pin, GPIO_FUNC_SPI);
+    
+    if (is_gpio_invalid_or_unused(cfg->sck_pin))
+        gpio_set_function(cfg->sck_pin, GPIO_FUNC_SPI);
+    if (is_gpio_invalid_or_unused(cfg->tx_pin))
+        gpio_set_function(cfg->tx_pin, GPIO_FUNC_SPI);
+    if (is_gpio_invalid_or_unused(cfg->rx_pin))
+        gpio_set_function(cfg->rx_pin, GPIO_FUNC_SPI);
 
     b->initialized = true;
     *bus = b;

@@ -32,7 +32,7 @@ bool mcu_i2c_init(const mcu_i2c_bus_config_t* cfg, mcu_i2c_bus_t** bus)
 
     rp_i2c_bus_t* b = &busses[cfg->controller];
     if (b->initialized)
-        false;
+        return false;
 
     uint brate = i2c_init(b->instance, cfg->baudrate);
     gpio_set_function(cfg->sda_pin, GPIO_FUNC_I2C);

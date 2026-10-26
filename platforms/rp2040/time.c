@@ -12,33 +12,33 @@
 #error "Unknown pico-sdk related hardware."
 #endif
 
-static_assert(sizeof(time_t) == sizeof(absolute_time_t), "Time integer types must be equal.");
+static_assert(sizeof(mcu_time_t) == sizeof(absolute_time_t), "Time integer types must be equal.");
 
 typedef struct timer_slot
 {
     bool active;
     bool periodic;
 
-    timer_id_t id;
-    timer_callback_t cb;
+    mcu_timer_id_t id;
+    mcu_timer_callback_t cb;
     void* context;
 
     repeating_timer_t repeat;
     alarm_id_t alarm;
 
-} timer_slot_t;
+} rp_timer_slot_t;
 
-timer_slot_t timer_slots[MAX_TIMERS] = {0};
-timer_id_t next_id = 0;
+rp_timer_slot_t timer_slots[MAX_TIMERS] = {0};
+mcu_timer_id_t next_id = 0;
 
-static void reset_timer_slot(timer_slot_t* slot)
+static void reset_timer_slot(rp_timer_slot_t* slot)
 {
     memset(slot, 0, sizeof(*slot));
     slot->id = INVALID_TIMER_ID;
     slot->alarm = -1;
 }
 
-static timer_slot_t* find_free_slot(void)
+static rp_timer_slot_t* find_free_slot(void)
 {
     for (uint i = 0; i < MAX_TIMERS; i++)
     {
@@ -48,7 +48,7 @@ static timer_slot_t* find_free_slot(void)
     return NULL;
 }
 
-static timer_slot_t* find_timer(timer_id_t id)
+static rp_timer_slot_t* find_timer(mcu_timer_id_t id)
 {
     for (uint i = 0; i < MAX_TIMERS; ++i) {
         if (timer_slots[i].active && timer_slots[i].id == id)
@@ -57,23 +57,23 @@ static timer_slot_t* find_timer(timer_id_t id)
     return NULL;
 }
 
-time_t mcu_get_time_since_boot_us(void)
+mcu_time_t mcu_get_time_since_boot_us(void)
 {
     return to_us_since_boot(get_absolute_time());
 }
 
 static bool repeating_timer_callback_intermediate(repeating_timer_t* rtimer)
 {
-    timer_slot_t* timer = (timer_slot_t*)rtimer->user_data;
+    rp_timer_slot_t* timer = (rp_timer_slot_t*)rtimer->user_data;
 
     timer->cb(timer->context);
 
     return true;
 }
 
-timer_id_t mcu_add_timer_periodic(time_t period_us, timer_callback_t cb, void* context)
+mcu_timer_id_t mcu_add_timer_periodic(mcu_time_t period_us, mcu_timer_callback_t cb, void* context)
 {
-    timer_slot_t* slot = find_free_slot();
+    rp_timer_slot_t* slot = find_free_slot();
     if (slot)
     {
         slot->active = true;
@@ -101,16 +101,16 @@ timer_id_t mcu_add_timer_periodic(time_t period_us, timer_callback_t cb, void* c
 
 static int64_t alarm_timer_callback_intermediate(alarm_id_t id, void* context)
 {
-    timer_slot_t* timer = (timer_slot_t*)context;
+    rp_timer_slot_t* timer = (rp_timer_slot_t*)context;
     
     timer->cb(timer->context);
 
     return 0;
 }
 
-timer_id_t mcu_add_timer_once(time_t period_us, timer_callback_t cb, void* context)
+mcu_timer_id_t mcu_add_timer_once(mcu_time_t period_us, mcu_timer_callback_t cb, void* context)
 {
-    timer_slot_t* slot = find_free_slot();
+    rp_timer_slot_t* slot = find_free_slot();
     if (slot)
     {
         slot->active = true;
@@ -139,9 +139,9 @@ timer_id_t mcu_add_timer_once(time_t period_us, timer_callback_t cb, void* conte
     }
 }
 
-bool mcu_timer_cancel(timer_id_t id)
+bool mcu_timer_cancel(mcu_timer_id_t id)
 {
-    timer_slot_t* timer = find_timer(id);
+    rp_timer_slot_t* timer = find_timer(id);
     bool ret = cancel_repeating_timer(&timer->repeat) || cancel_alarm(timer->alarm);
     reset_timer_slot(timer);
     return ret;
