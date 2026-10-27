@@ -130,3 +130,25 @@ bool mcu_spi_write(mcu_spi_bus_t* bus, const uint8_t* data, size_t len)
 
     return spi_write_blocking(bus->instance, data, len) > 0;
 }
+
+bool mcu_spi_read_16bit(mcu_spi_bus_t* bus, uint16_t* data, size_t len, uint16_t fill_bytes)
+{
+    if (!bus || !bus->initialized || (!data && len != 0))
+        return false;
+
+    if (len == 0)
+        return false;
+
+    return spi_read16_blocking(bus->instance, fill_bytes, data, len) > 0;
+}
+
+bool mcu_spi_write_16bit(mcu_spi_bus_t* bus, const uint16_t* data, size_t len)
+{
+    if (!bus || !bus->initialized || (!data && len != 0))
+        return false;
+
+    if (len == 0)
+        return false;
+
+    return spi_write16_blocking(bus->instance, data, len) > 0;
+}

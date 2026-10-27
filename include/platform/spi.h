@@ -51,6 +51,8 @@ bool mcu_spi_end(mcu_spi_bus_t* bus);
 bool mcu_spi_transfer(mcu_spi_bus_t* bus, const uint8_t* tx, uint8_t* rx, size_t len);
 bool mcu_spi_read(mcu_spi_bus_t* bus, uint8_t* data, size_t len, uint8_t fill_byte);
 bool mcu_spi_write(mcu_spi_bus_t* bus, const uint8_t* data, size_t len);
+bool mcu_spi_read_16bit(mcu_spi_bus_t* bus, uint16_t* data, size_t len, uint16_t fill_bytes);
+bool mcu_spi_write_16bit(mcu_spi_bus_t* bus, const uint16_t* data, size_t len);
 
 #ifdef __cplusplus
 }
