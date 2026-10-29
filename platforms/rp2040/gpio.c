@@ -1,39 +1,51 @@
 #include "platform/gpio.h"
+#include "platform/util/util.h"
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
 
 void mcu_gpio_init(uint8_t pin)
 {
-    gpio_init(pin);
+    if (!is_gpio_invalid_or_unused(pin))
+        gpio_init(pin);
 }
 
 void mcu_gpio_deinit(uint8_t pin)
 {
-    gpio_deinit(pin);
+    if (!is_gpio_invalid_or_unused(pin))
+        gpio_deinit(pin);
 }
 
 void mcu_gpio_dir(uint8_t pin, mcu_gpio_dir_t dir)
 {
-    gpio_set_dir(pin, dir);
+    if (!is_gpio_invalid_or_unused(pin))
+        gpio_set_dir(pin, dir);
 }
 
 void mcu_gpio_put(uint8_t pin, bool high)
 {
-    gpio_put(pin, high);
+    if (!is_gpio_invalid_or_unused(pin))
+        gpio_put(pin, high);
 }
 
 bool mcu_gpio_get(uint8_t pin)
 {
-    return gpio_get(pin);
+    if (!is_gpio_invalid_or_unused(pin))
+        return gpio_get(pin);
+    else
+        return false;
 }
 
 void mcu_gpio_pull(uint8_t pin, mcu_gpio_pull_t pull)
 {
-    gpio_set_pulls(pin, pull == MCU_GPIO_PULL_UP, pull == MCU_GPIO_PULL_DOWN);
+    if (!is_gpio_invalid_or_unused(pin))
+        gpio_set_pulls(pin, pull == MCU_GPIO_PULL_UP, pull == MCU_GPIO_PULL_DOWN);
 }
 
 void mcu_gpio_func(uint8_t pin, mcu_gpio_func_t func)
 {
+    if (is_gpio_invalid_or_unused(pin))
+        return;
+
     gpio_function_t rp_func;
     switch (func)
     {
@@ -122,6 +134,9 @@ __attribute__((constructor)) static void gpio_irq_init()
 
 void mcu_gpio_irq_set(uint8_t pin, uint32_t events, mcu_gpio_irq_callback_t cb, void* context)
 {
+    if (is_gpio_invalid_or_unused(pin))
+        return;    
+
     const uint32_t valid = 0x0F; // OR logic on all irq events
 
     if ((events & ~valid) != 0)
@@ -142,6 +157,9 @@ void mcu_gpio_irq_set(uint8_t pin, uint32_t events, mcu_gpio_irq_callback_t cb, 
 
 void mcu_gpio_irq_enable(uint8_t pin, bool enabled)
 {
+    if (is_gpio_invalid_or_unused(pin))
+        return;
+
     gpio_irq_entry_t* entry = &irq_entries[pin];
 
     if (entry->registered)
@@ -153,6 +171,9 @@ void mcu_gpio_irq_enable(uint8_t pin, bool enabled)
 
 void mcu_gpio_irq_clear(uint8_t pin)
 {
+    if (is_gpio_invalid_or_unused(pin))
+        return;
+
     gpio_irq_entry_t* entry = &irq_entries[pin];
 
     gpio_set_irq_enabled(pin, translate_event_to_rp(entry->enabled), false);

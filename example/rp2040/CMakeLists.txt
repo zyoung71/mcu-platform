@@ -47,7 +47,7 @@ project(mcu-platform-rp2040-impl C CXX ASM)
 
 pico_sdk_init()
 
-add_subdirectory(../../platforms/rp2040 build)
+add_subdirectory(../../platforms/rp2040 build/mcu-platform-rp2040)
 
 add_executable(${CMAKE_PROJECT_NAME} src/main.c)
 
