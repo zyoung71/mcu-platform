@@ -13,6 +13,9 @@ typedef void (*mcu_timer_callback_t)(void* context);
 
 #define INVALID_TIMER_ID -1
 
+void mcu_sleep_ms(uint32_t ms);
+void mcu_sleep_us(uint64_t us);
+
 mcu_time_t mcu_get_time_since_boot_us(void);
 
 mcu_timer_id_t mcu_add_timer_periodic(mcu_time_t period_us, mcu_timer_callback_t cb, void* context);

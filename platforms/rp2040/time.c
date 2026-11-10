@@ -57,6 +57,16 @@ static rp_timer_slot_t* find_timer(mcu_timer_id_t id)
     return NULL;
 }
 
+void mcu_sleep_ms(uint32_t ms)
+{
+    sleep_ms(ms);
+}
+
+void mcu_sleep_us(uint64_t us)
+{
+    sleep_us(us);
+}
+
 mcu_time_t mcu_get_time_since_boot_us(void)
 {
     return to_us_since_boot(get_absolute_time());

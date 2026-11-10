@@ -13,11 +13,16 @@ if (NOT TARGET mcu-platform-rp2040)
 
     add_subdirectory(../../ build/mcu-platform-interface)
 
+    target_include_directories(mcu-platform-rp2040 PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}
+    )
+
     target_link_libraries(mcu-platform-rp2040
         mcu-platform-interface
 
         pico_time
         pico_sync
+        pico_stdlib
         hardware_spi
         hardware_i2c
         hardware_uart
