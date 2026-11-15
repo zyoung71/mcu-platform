@@ -8,7 +8,7 @@ if (NOT TARGET mcu-platform-rp2040)
         ${CMAKE_CURRENT_LIST_DIR}/uart.c
         ${CMAKE_CURRENT_LIST_DIR}/pwm.c
         ${CMAKE_CURRENT_LIST_DIR}/adc.c
-        ${CMAKE_CURRENT_LIST_DIR}/util/queue.c
+        ${CMAKE_CURRENT_LIST_DIR}/util/protected_queue.c
     )
 
     add_subdirectory(../../ build/mcu-platform-interface)
@@ -18,8 +18,6 @@ if (NOT TARGET mcu-platform-rp2040)
     )
 
     target_link_libraries(mcu-platform-rp2040
-        mcu-platform-interface
-
         pico_time
         pico_sync
         pico_stdlib
@@ -29,6 +27,7 @@ if (NOT TARGET mcu-platform-rp2040)
         hardware_pwm
         hardware_adc
         hardware_clocks
+        mcu-platform-interface
     )
 
     set(PLATFORM_NAME "rp2040")

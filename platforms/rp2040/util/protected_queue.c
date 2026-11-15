@@ -1,10 +1,9 @@
 #include "platform/util/queue.h"
 #include "pico/critical_section.h"
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct mcu_queue
+typedef struct mcu_protected_queue
 {
     critical_section_t lock;
 
@@ -16,9 +15,9 @@ typedef struct mcu_queue
     size_t count;
     bool initialized;
 
-} rp_queue_t;
+} rp_protected_queue_t;
 
-bool mcu_queue_init(mcu_queue_t** queue, size_t item_size, size_t capacity)
+bool mcu_protected_queue_init(mcu_protected_queue_t** queue, size_t item_size, size_t capacity)
 {
     if (item_size == 0 || capacity == 0 || !queue)
         return false;
@@ -26,7 +25,7 @@ bool mcu_queue_init(mcu_queue_t** queue, size_t item_size, size_t capacity)
     if (capacity > SIZE_MAX / item_size)
         return false;
 
-    mcu_queue_t* queue_ptr = (mcu_queue_t*)malloc(sizeof(rp_queue_t));
+    mcu_protected_queue_t* queue_ptr = (mcu_protected_queue_t*)malloc(sizeof(rp_protected_queue_t));
     if (!queue_ptr)
         return false;
 
@@ -45,14 +44,14 @@ bool mcu_queue_init(mcu_queue_t** queue, size_t item_size, size_t capacity)
     return queue_ptr->data != NULL;
 }
 
-void mcu_queue_deinit(mcu_queue_t* queue)
+void mcu_protected_queue_deinit(mcu_protected_queue_t* queue)
 {
     critical_section_deinit(&queue->lock);
     free(queue->data);
     free(queue);
 }
 
-bool mcu_queue_try_push(mcu_queue_t* queue, const void* item)
+bool mcu_protected_queue_try_push(mcu_protected_queue_t* queue, const void* item)
 {
     if (!queue || !item || !queue->initialized)
         return false;
@@ -73,7 +72,7 @@ bool mcu_queue_try_push(mcu_queue_t* queue, const void* item)
     return true;
 }
 
-bool mcu_queue_try_pop(mcu_queue_t* queue, void* item)
+bool mcu_protected_queue_try_pop(mcu_protected_queue_t* queue, void* item)
 {
     if (!queue || !item || !queue->initialized)
         return false;
@@ -95,7 +94,7 @@ bool mcu_queue_try_pop(mcu_queue_t* queue, void* item)
     return true;
 }
 
-size_t mcu_queue_count(mcu_queue_t* queue)
+size_t mcu_protected_queue_count(mcu_protected_queue_t* queue)
 {
     if (!queue || !queue->initialized)
         return 0;
@@ -107,12 +106,12 @@ size_t mcu_queue_count(mcu_queue_t* queue)
     return c;
 }
 
-bool mcu_queue_is_empty(mcu_queue_t* queue)
+bool mcu_protected_queue_is_empty(mcu_protected_queue_t* queue)
 {
-    return mcu_queue_count(queue) == 0;
+    return mcu_protected_queue_count(queue) == 0;
 }
 
-bool mcu_queue_is_full(mcu_queue_t* queue)
+bool mcu_protected_queue_is_full(mcu_protected_queue_t* queue)
 {
     if (!queue || !queue->initialized)
         return false;
@@ -124,7 +123,7 @@ bool mcu_queue_is_full(mcu_queue_t* queue)
     return full;
 }
 
-void mcu_queue_reset(mcu_queue_t* queue)
+void mcu_protected_queue_reset(mcu_protected_queue_t* queue)
 {
     if (!queue || !queue->initialized)
         return;

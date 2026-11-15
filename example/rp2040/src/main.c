@@ -76,11 +76,11 @@ int main()
     mcu_adc_init(26);
     uint32_t adc_v = mcu_adc_read(26);
 
-    mcu_queue_t* queue;
+    mcu_queue_t queue;
     mcu_queue_init(&queue, sizeof(int32_t), 8);
 
     int32_t number = 50;
-    mcu_queue_try_push(queue, &number);
+    mcu_queue_try_push(&queue, &number);
 
     while (1)
     {
