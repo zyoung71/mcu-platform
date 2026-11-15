@@ -14,7 +14,8 @@ typedef struct mcu_i2c_bus
 
 static rp_i2c_bus_t busses[NUM_I2CS];
 
-__attribute__((constructor)) static void init_bus_slots()
+static bool init_bus_slots_b = false;
+static void init_bus_slots()
 {
     busses[0].instance = i2c0;
     busses[0].initialized = false;
@@ -23,12 +24,17 @@ __attribute__((constructor)) static void init_bus_slots()
     busses[1].instance = i2c1;
     busses[1].initialized = false;
     mutex_init(&busses[1].mutex);
+
+    init_bus_slots_b = true;
 }
 
 bool mcu_i2c_init(const mcu_i2c_bus_config_t* cfg, mcu_i2c_bus_t** bus)
 {
     if (!cfg || !bus || cfg->baudrate == 0)
         return false;
+
+    if (!init_bus_slots_b)
+        init_bus_slots();
 
     rp_i2c_bus_t* b = &busses[cfg->controller];
     if (b->initialized)

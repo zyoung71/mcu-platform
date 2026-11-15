@@ -14,7 +14,8 @@ typedef struct mcu_spi_bus
 
 static rp_spi_bus_t busses[NUM_SPIS];
 
-__attribute__((constructor)) static void init_bus_slots()
+static bool init_bus_slots_b = false;
+static void init_bus_slots()
 {
     busses[0].instance = spi0;
     busses[0].initialized = false;
@@ -23,12 +24,17 @@ __attribute__((constructor)) static void init_bus_slots()
     busses[1].instance = spi1;
     busses[1].initialized = false;
     mutex_init(&busses[1].mutex);
+
+    init_bus_slots_b = true;
 }
 
 bool mcu_spi_init(const mcu_spi_bus_config_t* cfg, mcu_spi_bus_t** bus)
 {
     if (!cfg || !bus || cfg->controller >= NUM_SPIS || cfg->baudrate == 0)
         return false;
+
+    if (!init_bus_slots_b)
+        init_bus_slots();
 
     rp_spi_bus_t* b = &busses[cfg->controller];
     if (b->initialized)

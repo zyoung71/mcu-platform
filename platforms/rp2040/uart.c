@@ -14,7 +14,8 @@ typedef struct mcu_uart_bus
 
 static rp_uart_bus_t busses[NUM_UARTS];
 
-__attribute__((constructor)) static void init_bus_slots()
+static bool init_bus_slots_b = false;
+static void init_bus_slots()
 {
     busses[0].instance = uart0;
     busses[0].initialized = false;
@@ -23,6 +24,8 @@ __attribute__((constructor)) static void init_bus_slots()
     busses[1].instance = uart1;
     busses[1].initialized = false;
     mutex_init(&busses[1].mutex);
+
+    init_bus_slots_b = true;
 }
 
 static uart_parity_t translate_parity_to_rp(mcu_uart_parity_t parity)
@@ -44,6 +47,9 @@ bool mcu_uart_init(const mcu_uart_bus_config_t* cfg, mcu_uart_bus_t** bus)
 {
     if (!cfg || !bus || cfg->baudrate == 0 || cfg->data_bits < 5 || cfg->data_bits > 8 || cfg->stop_bits != 1 || cfg->stop_bits != 2)
         return false;
+
+    if (!init_bus_slots_b)
+        init_bus_slots();
 
     rp_uart_bus_t* b = &busses[cfg->controller];
     if (b->initialized)
