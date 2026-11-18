@@ -68,24 +68,12 @@ bool mcu_spi_deinit(mcu_spi_bus_t* bus)
     return true;
 }
 
-bool mcu_spi_begin(mcu_spi_bus_t* bus, const mcu_spi_config_t* cfg)
+bool mcu_spi_begin(mcu_spi_bus_t* bus)
 {
-    if (!bus || !bus->initialized || !cfg || cfg->baudrate == 0)
+    if (!bus || !bus->initialized)
         return false;
 
     mutex_enter_blocking(&bus->mutex);
-
-    uint clock_polarity = (cfg->mode >> 1) & 1;
-    uint clock_phase = cfg->mode & 1;
-    
-    spi_set_baudrate(bus->instance, cfg->baudrate);
-    spi_set_format(
-        bus->instance,
-        8,
-        (spi_cpol_t)clock_polarity,
-        (spi_cpha_t)clock_phase,
-        cfg->order == MCU_SPI_MSB_FIRST ? SPI_MSB_FIRST : SPI_LSB_FIRST
-    );
     return true;
 }
 
@@ -97,6 +85,25 @@ bool mcu_spi_end(mcu_spi_bus_t* bus)
         return true;
     }
     return false;
+}
+
+bool mcu_spi_set_config(mcu_spi_bus_t* bus, const mcu_spi_config_t* cfg)
+{
+    if (!bus || !bus->initialized || !cfg || cfg->baudrate == 0)
+        return false;
+
+    uint clock_polarity = (cfg->mode >> 1) & 1;
+    uint clock_phase = cfg->mode & 1;
+    
+    spi_set_baudrate(bus->instance, cfg->baudrate);
+    spi_set_format(
+        bus->instance,
+        cfg->databits,
+        (spi_cpol_t)clock_polarity,
+        (spi_cpha_t)clock_phase,
+        cfg->order == MCU_SPI_MSB_FIRST ? SPI_MSB_FIRST : SPI_LSB_FIRST
+    );
+    return true;
 }
 
 bool mcu_spi_transfer(mcu_spi_bus_t* bus, const uint8_t* tx, uint8_t* rx, size_t len)

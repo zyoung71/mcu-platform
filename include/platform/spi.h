@@ -12,6 +12,14 @@ typedef struct mcu_spi_bus mcu_spi_bus_t;
 
 typedef enum
 {
+    MCU_SPI_DATABITS_8 = 8,
+    MCU_SPI_DATABITS_16 = 16,
+    MCU_SPI_DATABITS_32 = 32,
+    MCU_SPI_DATABITS_64 = 64
+} mcu_spi_databits_t;
+
+typedef enum
+{
     MCU_SPI_MODE_0,
     MCU_SPI_MODE_1,
     MCU_SPI_MODE_2,
@@ -29,6 +37,7 @@ typedef enum
 typedef struct
 {
     uint32_t baudrate;
+    mcu_spi_databits_t databits;
     mcu_spi_mode_t mode;
     mcu_spi_order_t order;
 
@@ -46,8 +55,9 @@ typedef struct
 
 bool mcu_spi_init(const mcu_spi_bus_config_t* cfg, mcu_spi_bus_t** bus);
 bool mcu_spi_deinit(mcu_spi_bus_t* bus);
-bool mcu_spi_begin(mcu_spi_bus_t* bus, const mcu_spi_config_t* cfg);
+bool mcu_spi_begin(mcu_spi_bus_t* bus);
 bool mcu_spi_end(mcu_spi_bus_t* bus);
+bool mcu_spi_set_config(mcu_spi_bus_t* bus, const mcu_spi_config_t* cfg);
 bool mcu_spi_transfer(mcu_spi_bus_t* bus, const uint8_t* tx, uint8_t* rx, size_t len);
 bool mcu_spi_read(mcu_spi_bus_t* bus, uint8_t* data, size_t len, uint8_t fill_byte);
 bool mcu_spi_write(mcu_spi_bus_t* bus, const uint8_t* data, size_t len);
